@@ -113,22 +113,20 @@ func parseHTTPRequest(httpReq *http.Request) (*proxy.Request, error) {
 		return nil, fmt.Errorf("cannot parse request body: %w", err)
 	}
 
-	fqdn, ok := payload["fqdn"]
-	if !ok {
-		return nil, fmt.Errorf(`payload must contain a "fqdn" field`)
-	}
-
-	value, ok := payload["value"]
-	if !ok {
-		return nil, fmt.Errorf(`payload must contains a "value" field`)
+	var fqdn string
+	var value string
+	if !isLegoRawRequest(payload) {
+		fqdn = payload["fqdn"]
+		value = payload["value"]
+	} else {
+		fqdn, value = dns01.GetRecord(payload["domain"], payload["keyAuth"])
 	}
 
 	token, err := convertBasicAuthToToken(httpReq)
-	if !ok {
+	if err != nil {
 		return nil, err
 	}
 
-	// #todo handle lego's raw request
 	req := proxy.Request{
 		Payload: proxy.Payload{
 			TxtFQDN:  dns01.ToFqdn(fqdn),
@@ -153,4 +151,18 @@ func convertBasicAuthToToken(req *http.Request) (string, error) {
 	in := []byte(fmt.Sprintf("%s:%s", username, password))
 	hash := sha256.Sum256(in)
 	return hex.EncodeToString(hash[:]), nil
+}
+
+func isLegoRawRequest(data map[string]string) bool {
+	if _, ok := data["domain"]; !ok {
+		return false
+	}
+	if _, ok := data["keyAuth"]; !ok {
+		return false
+	}
+	if _, ok := data["token"]; !ok {
+		return false
+	}
+
+	return true
 }
