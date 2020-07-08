@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/matthiasng/dns-challenge-proxy/config"
+	"github.com/matthiasng/acme-dns-proxy/config"
 )
 
 // AccessRule defines a pattern and the corresponding auth key

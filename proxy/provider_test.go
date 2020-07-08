@@ -4,8 +4,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/matthiasng/dns-challenge-proxy/config"
-	. "github.com/matthiasng/dns-challenge-proxy/proxy"
+	"github.com/matthiasng/acme-dns-proxy/config"
+	. "github.com/matthiasng/acme-dns-proxy/proxy"
 )
 
 var _ = Describe("Provider", func() {

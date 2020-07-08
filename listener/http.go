@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/go-acme/lego/v3/challenge/dns01"
-	"github.com/matthiasng/dns-challenge-proxy/proxy"
+	"github.com/matthiasng/acme-dns-proxy/proxy"
 )
 
 func notFound(w http.ResponseWriter) {

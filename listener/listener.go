@@ -1,7 +1,7 @@
 package listener
 
 import (
-	"github.com/matthiasng/dns-challenge-proxy/proxy"
+	"github.com/matthiasng/acme-dns-proxy/proxy"
 )
 
 // Listener handles incomding requests

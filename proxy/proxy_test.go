@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
 
-	. "github.com/matthiasng/dns-challenge-proxy/proxy"
+	. "github.com/matthiasng/acme-dns-proxy/proxy"
 )
 
 // mockedProviderHelper is used to control the Present/CleanUp function behaviour

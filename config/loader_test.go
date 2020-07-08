@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "github.com/matthiasng/dns-challenge-proxy/config"
+	. "github.com/matthiasng/acme-dns-proxy/config"
 
 	"github.com/spf13/afero"
 )
@@ -165,7 +165,7 @@ server:
 // 	. "github.com/onsi/ginkgo"
 // 	. "github.com/onsi/gomega"
 
-// 	. "github.com/matthiasng/dns-challenge-proxy/config"
+// 	. "github.com/matthiasng/acme-dns-proxy/config"
 
 // 	"github.com/spf13/afero"
 // )

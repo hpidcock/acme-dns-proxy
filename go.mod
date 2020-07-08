@@ -1,4 +1,4 @@
-module github.com/matthiasng/dns-challenge-proxy
+module github.com/matthiasng/acme-dns-proxy
 
 go 1.14
 

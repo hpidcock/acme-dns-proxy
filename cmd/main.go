@@ -4,9 +4,9 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/matthiasng/dns-challenge-proxy/config"
-	"github.com/matthiasng/dns-challenge-proxy/listener"
-	"github.com/matthiasng/dns-challenge-proxy/proxy"
+	"github.com/matthiasng/acme-dns-proxy/config"
+	"github.com/matthiasng/acme-dns-proxy/listener"
+	"github.com/matthiasng/acme-dns-proxy/proxy"
 
 	"github.com/spf13/afero"
 	"go.uber.org/zap"

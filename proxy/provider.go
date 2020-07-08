@@ -3,7 +3,7 @@ package proxy
 import (
 	"fmt"
 
-	"github.com/matthiasng/dns-challenge-proxy/config"
+	"github.com/matthiasng/acme-dns-proxy/config"
 	"github.com/matthiasng/dns-provider-api/provider"
 )
 
