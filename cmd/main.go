@@ -5,6 +5,7 @@ import (
 	"os/signal"
 
 	"github.com/matthiasng/acme-dns-proxy/config"
+	"github.com/matthiasng/acme-dns-proxy/dns"
 	"github.com/matthiasng/acme-dns-proxy/listener"
 	"github.com/matthiasng/acme-dns-proxy/proxy"
 
@@ -19,7 +20,7 @@ func main() {
 	logger, _ := zap.NewDevelopment()
 	defer logger.Sync()
 
-	logger.Sugar().Infow("load config", "from", cfgFilename)
+	logger.Sugar().Infow("load config", "file", cfgFilename)
 	loader := config.NewFileLoader(afero.NewOsFs(), cfgFilename)
 
 	cfg, err := loader.Load()
@@ -27,7 +28,7 @@ func main() {
 		logger.Panic("Failed to load config", zap.Error(err))
 	}
 
-	provider, err := proxy.NewLegoProviderFromConfig(&cfg.Provider)
+	provider, err := dns.NewProviderFromConfig(&cfg.Provider, dns.DefaultZoneResolver)
 	if err != nil {
 		logger.Panic("Invalid access rules", zap.Error(err))
 	}
@@ -46,7 +47,9 @@ func main() {
 	listener := listener.NewHTTP(cfg.Server.Addr)
 
 	go func() {
-		logger.Sugar().Infow("start listening", "on", cfg.Server.Addr)
+		logger.Sugar().Infow("start listening",
+			"on", cfg.Server.Addr,
+		)
 		if err := listener.ListenAndServe(proxy); err != nil {
 			panic(err)
 		}

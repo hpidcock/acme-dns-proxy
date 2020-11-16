@@ -2,64 +2,43 @@ package proxy_test
 
 import (
 	"errors"
-	"fmt"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
 
+	"github.com/matthiasng/acme-dns-proxy/dns"
 	. "github.com/matthiasng/acme-dns-proxy/proxy"
 )
 
-// mockedProviderHelper is used to control the Present/CleanUp function behaviour
-type mockedProviderHelper struct {
-	err    error
-	domain string
-	token  string
-	fqdn   string
-	value  string
+type mockProvider struct {
+	err       error
+	challenge dns.Challenge
 }
 
-func (m *mockedProviderHelper) call(domain, token, fqdn, value string) error {
-	m.domain = domain
-	m.token = token
-	m.fqdn = fqdn
-	m.value = value
+func (m *mockProvider) Present(c dns.Challenge) error {
+	m.challenge = c
 	return m.err
 }
 
-type mockedProvider struct {
-	present mockedProviderHelper
-	cleanup mockedProviderHelper
-}
-
-func (m *mockedProvider) Present(domain, token, fqdn, value string) error {
-	return m.present.call(domain, token, fqdn, value)
-}
-
-func (m *mockedProvider) CleanUp(domain, token, fqdn, value string) error {
-	return m.cleanup.call(domain, token, fqdn, value)
+func (m *mockProvider) CleanUp(c dns.Challenge) error {
+	m.challenge = c
+	return m.err
 }
 
 var _ = Describe("Proxy", func() {
 	Describe("handle", func() {
 		var (
-			provider    mockedProvider
+			provider    mockProvider
 			accessRules AccessRules
 			request     Request
 			err         error
-
-			itSouldFailWith = func(s string) {
-				It("sould faild", func() {
-					Expect(err).To(MatchError(ContainSubstring(s)))
-				})
-			}
 		)
 
 		AfterEach(func() {
 			request = Request{}
 			accessRules = AccessRules{}
-			provider = mockedProvider{}
+			provider = mockProvider{}
 		})
 
 		JustBeforeEach(func() {
@@ -73,111 +52,131 @@ var _ = Describe("Proxy", func() {
 			err = proxy.Handle(&request)
 		})
 
-		// #todo test cleanup
-		Describe("present", func() {
+		Context("unknown action", func() {
 			BeforeEach(func() {
-				request.Action = "present"
+				request.Action = "unknown"
 			})
 
-			Context("empty txt fqdn", func() {
-				BeforeEach(func() {
-					request.Payload = Payload{
-						TxtFQDN:  "",
-						TxtValue: "123",
-					}
-				})
-
-				itSouldFailWith("TXT record: FQDN not set")
-			})
-
-			Context("empty txt value", func() {
-				BeforeEach(func() {
-					request.Payload = Payload{
-						TxtFQDN:  "test.local",
-						TxtValue: "",
-					}
-				})
-
-				itSouldFailWith("TXT record: value not set")
-			})
-
-			Context("unknown fqdn", func() {
-				BeforeEach(func() {
-					request.Payload = Payload{
-						TxtFQDN:  "test.local",
-						TxtValue: "123",
-					}
-				})
-
-				itSouldFailWith(`no access rule for "test.local" found`)
-			})
-
-			Context("invalid auth key", func() {
-				BeforeEach(func() {
-					accessRules = AccessRules{
-						&AccessRule{
-							Pattern: MustCompilePattern("test.local"),
-							Token:   "123",
-						},
-					}
-					request.Token = "abc"
-					request.Payload = Payload{
-						TxtFQDN:  "test.local",
-						TxtValue: "123",
-					}
-				})
-
-				itSouldFailWith("access denied")
-			})
-
-			Context("provider error", func() {
-				BeforeEach(func() {
-					accessRules = AccessRules{
-						&AccessRule{
-							Pattern: MustCompilePattern("test.local"),
-							Token:   "123",
-						},
-					}
-					request.Token = "123"
-					request.Payload = Payload{
-						TxtFQDN:  "test.local",
-						TxtValue: "123",
-					}
-
-					provider.present.err = errors.New("present err test")
-				})
-
-				itSouldFailWith("present err test")
-			})
-
-			Context("provider error", func() {
-				BeforeEach(func() {
-					accessRules = AccessRules{
-						&AccessRule{
-							Pattern: MustCompilePattern("test.local"),
-							Token:   "123",
-						},
-					}
-					request.Token = "123"
-					request.Payload = Payload{
-						TxtFQDN:  "test.local",
-						TxtValue: "123",
-					}
-
-					provider.present.err = nil
-				})
-
-				It("should succeed", func() {
-					Expect(err).To(Succeed())
-				})
-
-				Specify("provider present call parameter", func() {
-					Expect(provider.present.domain).To(Equal(fmt.Sprintf("%s.", request.Payload.TxtFQDN)))
-					Expect(provider.present.token).To(Equal(request.Payload.TxtValue))
-					Expect(provider.present.fqdn).To(Equal(request.Payload.TxtFQDN))
-					Expect(provider.present.value).To(Equal(request.Payload.TxtValue))
-				})
+			It("sould fail", func() {
+				Expect(err).To(MatchError(ContainSubstring("invalid request: unknown action")))
 			})
 		})
+
+		for _, action := range []string{"present", "cleanup"} {
+			func(action string) {
+				Describe(action, func() {
+					BeforeEach(func() {
+						request.Action = action
+					})
+
+					Context("empty txt fqdn", func() {
+						BeforeEach(func() {
+							request.Challenge = dns.Challenge{
+								FQDN:           "",
+								EncodedKeyAuth: "123",
+							}
+						})
+
+						It("sould fail", func() {
+							Expect(err).To(MatchError(ContainSubstring("invalid request: fqdn not set")))
+						})
+					})
+
+					Context("empty txt value", func() {
+						BeforeEach(func() {
+							request.Challenge = dns.Challenge{
+								FQDN:           "test.local",
+								EncodedKeyAuth: "",
+							}
+						})
+
+						It("sould fail", func() {
+							Expect(err).To(MatchError(ContainSubstring("invalid request: key auth value not set")))
+						})
+					})
+
+					Context("unknown fqdn", func() {
+						BeforeEach(func() {
+							request.Challenge = dns.Challenge{
+								FQDN:           "test.local",
+								EncodedKeyAuth: "123",
+							}
+						})
+
+						It("sould fail", func() {
+							Expect(err).To(MatchError(ContainSubstring(`no access rule for "test.local" found`)))
+						})
+					})
+
+					Context("invalid auth key", func() {
+						BeforeEach(func() {
+							accessRules = AccessRules{
+								&AccessRule{
+									Pattern: MustCompilePattern("test.local"),
+									Token:   "123",
+								},
+							}
+							request.AuthToken = "abc"
+							request.Challenge = dns.Challenge{
+								FQDN:           "test.local",
+								EncodedKeyAuth: "123",
+							}
+						})
+
+						It("sould fail", func() {
+							Expect(err).To(MatchError(ContainSubstring("access denied")))
+						})
+					})
+
+					Context("provider error", func() {
+						BeforeEach(func() {
+							accessRules = AccessRules{
+								&AccessRule{
+									Pattern: MustCompilePattern("test.local"),
+									Token:   "123",
+								},
+							}
+							request.AuthToken = "123"
+							request.Challenge = dns.Challenge{
+								FQDN:           "test.local",
+								EncodedKeyAuth: "123",
+							}
+
+							provider.err = errors.New("err test")
+						})
+
+						It("sould fail", func() {
+							Expect(err).To(MatchError(ContainSubstring("err test")))
+						})
+					})
+
+					Context("provider success", func() {
+						BeforeEach(func() {
+							accessRules = AccessRules{
+								&AccessRule{
+									Pattern: MustCompilePattern("test.local"),
+									Token:   "123",
+								},
+							}
+							request.AuthToken = "123"
+							request.Challenge = dns.Challenge{
+								FQDN:           "test.local",
+								EncodedKeyAuth: "123",
+							}
+
+							provider.err = nil
+						})
+
+						It("should succeed", func() {
+							Expect(err).To(Succeed())
+						})
+
+						Specify("provider call parameter", func() {
+							Expect(provider.challenge).To(Equal(request.Challenge))
+						})
+					})
+				})
+			}(action)
+		}
 	})
 })

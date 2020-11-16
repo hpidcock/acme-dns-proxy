@@ -9,7 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-acme/lego/v3/challenge/dns01"
+	"github.com/matthiasng/acme-dns-proxy/dns"
+	"github.com/matthiasng/acme-dns-proxy/dns01"
 	"github.com/matthiasng/acme-dns-proxy/proxy"
 )
 
@@ -25,14 +26,15 @@ func methodNotAllowed(w http.ResponseWriter) {
 	http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 }
 
-func forbidden(w http.ResponseWriter) {
-	http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+func unauthorized(w http.ResponseWriter) {
+	http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 }
 
 func internalServerError(w http.ResponseWriter, err error) {
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
+// NewHTTP create a new HTTP listener
 func NewHTTP(addr string) Listener {
 	return &httpListener{
 		addr: addr,
@@ -85,15 +87,17 @@ func newHTTPHandler(p proxy.Proxy) http.HandlerFunc {
 
 		err = p.Handle(req)
 		if err != nil {
-			// We dont care about the reason.
-			forbidden(w)
+			// We dont want to expose information to unauthorized clients.
+			// So we dont care about the reason and always respond with unauthorized.
+			unauthorized(w)
 			return
 		}
 
+		// #todo do we have to send a response ?
 		response, err := json.Marshal(struct {
 			FQDN  string
 			Value string
-		}{req.Payload.TxtFQDN, req.Payload.TxtValue})
+		}{req.Challenge.FQDN, req.Challenge.FQDN})
 
 		if err != nil {
 			internalServerError(w, err)
@@ -114,12 +118,13 @@ func parseHTTPRequest(httpReq *http.Request) (*proxy.Request, error) {
 	}
 
 	var fqdn string
-	var value string
+	var keyAuth string
 	if !isLegoRawRequest(payload) {
-		fqdn = payload["fqdn"]
-		value = payload["value"]
+		fqdn = dns01.FQDNFromTXTRecordName(payload["fqdn"])
+		keyAuth = payload["value"]
 	} else {
-		fqdn, value = dns01.GetRecord(payload["domain"], payload["keyAuth"])
+		fqdn = dns01.ToFqdn(payload["domain"])
+		keyAuth = dns01.EncodeKeyAuthorization(payload["keyAuth"])
 	}
 
 	token, err := convertBasicAuthToToken(httpReq)
@@ -128,15 +133,15 @@ func parseHTTPRequest(httpReq *http.Request) (*proxy.Request, error) {
 	}
 
 	req := proxy.Request{
-		Payload: proxy.Payload{
-			TxtFQDN:  dns01.ToFqdn(fqdn),
-			TxtValue: value,
+		Challenge: dns.Challenge{
+			FQDN:           dns01.ToFqdn(fqdn),
+			EncodedKeyAuth: keyAuth,
 		},
-		Client: proxy.Client{
-			RemoteAddr: httpReq.RemoteAddr,
-			Name:       httpReq.UserAgent(),
+		Remote: proxy.Remote{
+			Addr: httpReq.RemoteAddr,
+			Name: httpReq.UserAgent(),
 		},
-		Token: token,
+		AuthToken: token,
 	}
 
 	return &req, nil

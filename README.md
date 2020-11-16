@@ -4,16 +4,20 @@ Proxy to secure ACME DNS challenges.
 
 Most DNS providers do not offer a way to restrict access only to TXT records or to a specific domain. DigitalOcean for example only offers API tokens with full cloud access.
 
-When someone gets the key, they not only have control over your entire domain, in the case of digitalocean they also have access to all cloud resources. Obviously you want to keep your token as secret as possible.
+This creates a security issue if you use multipe host with `acme.sh` or `lego`, for example, because you have to distribute your API key among the host.
 
-But when you are using ACME Client's like `acme.sh` or `lego`, you have to set the token somewhere on your client system.
+With `ACME DNS Proxy` you can control which client has access to which domains without storing your DNS Provider API keys on the client.
 
-With `ACME DNS Proxy` you can easily control which client has access to which domains without storing your DNS Provider API keys on the client
+## Features
+- Restrict ACME client access to specified (sub)domains
+- CertMagic or self signed certificate for the proxy itself (TODO)
+- Monitoring endpoint (prometheus) (TODO)
+- "auto cleanup" DNS records (TODO)
 
 ## Supported clients:
 - [acmesh-official/acme.sh](https://github.com/acmesh-official/acme.sh) with [dns_acmeproxy](https://github.com/acmesh-official/acme.sh/wiki/dnsapi#78-use-acmeproxy-dns-api)
 - [go-acme/lego](https://github.com/go-acme/lego) with [httpreq](https://go-acme.github.io/lego/dns/httpreq/)
-- [certmagic](https://github.com/caddyserver/certmagic) with [httpreq](https://go-acme.github.io/lego/dns/httpreq/)
+- [traefik/traefik](https://doc.traefik.io/traefik/https/acme/#providers) which uses [go-acme/lego](https://github.com/go-acme/lego)
 - Everything else that can send a HTTP request
 
 ## Configuration & Usage
@@ -22,7 +26,7 @@ The configuration consists of three main parts. `server`, `provider` and `access
 
 ---
 
-Under `server` you can configure common stuff like TLS and the address and port, the server listens to.
+Under `server` you can configure common stuff like TLS and the address, the server listens to.
 ```yaml
 server:
   addr: ":8080"
@@ -42,17 +46,18 @@ provider:
 
 `type:` \
 `type` specifies the DNS provider. 
-Please see the [TODO Link: Supported Providers](#) section for further information.
+`acme-dns-proxy` uses [libdns/libdns](https://github.com/libdns/libdns) to add and remove DNS records. Please see the list of [Supported Providers](https://github.com/matthiasng/libdnsfactory/blob/master/docs.md) section for further information.
+All providers support 
 
 `variables:` \
 Which `variables` are available depends on the `type`.
-Please see the [TODO Link: Supported Providers](#) section for further information.
+Please see the list [Supported Providers](https://github.com/matthiasng/libdnsfactory/blob/master/docs.md) section for further information.
 
 ---
-The `access` section specifies the domains for which a client can request a certificate.
+The `access_rules` section specifies the domains for which a client can request a certificate.
 
 ```yaml
-access:
+access_rules:
   - pattern: "*.a.b.c.matthiasng.com"
     token: f9e5f6a00056b7913fea130aa31921ccae1b4cb152a12999d7751e667c016344
   - pattern: matthiasng.com
@@ -65,7 +70,7 @@ access:
 A glob pattern that must match the domain a client is allowed to verify.
 - `matthiasng.com`: only allow `matthiasng.com`
 - `*.sub.matthiasng.com`: allow all subdomains but not `sub.matthiasng.com`
-- `*sub.matthiasng.com`: all subdomains, the current domain, and each subdomain of `matthiasng.com` starting with `*sub`
+- `*foo.matthiasng.com`: all subdomains, the current domain, and each subdomain of `matthiasng.com` starting with `*foo`
 
 `token:` \
 A token to verify the request.
@@ -85,7 +90,11 @@ The following variables are available:
     Contains all environment variables. \
     ```yaml
     provider:
-      type: digitalocean
+      type: hetzner
       variables:
-        DO_AUTH_TOKEN: {{ .Env.DO_AUTH_TOKEN }}
+        AuthAPIToken: {{ .Env.HETZNER_AUTH_API_TOKEN }}
     ```
+
+# TODOs
+- https://github.com/rmbolger/Posh-ACME/wiki/List-of-Supported-DNS-Providers
+- multiple providers

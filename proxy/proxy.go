@@ -3,55 +3,48 @@ package proxy
 import (
 	"errors"
 	"fmt"
-	"strings"
 
-	"github.com/go-acme/lego/challenge/dns01"
-
+	"github.com/google/uuid"
+	"github.com/matthiasng/acme-dns-proxy/dns"
 	"go.uber.org/zap"
 )
-
-type context struct {
-	Log *zap.SugaredLogger
-}
 
 // Proxy handles incoming request and calls the DNS provider API.
 type Proxy struct {
 	Logger      *zap.Logger
-	Provider    Provider
+	Provider    dns.Provider
 	AccessRules AccessRules
-	counter     RequestIDCounter
 }
 
-// Handle handels a request.
+// Handle validates and authenticates a request. If everything is fine, the configured DNS provider API gets called.
 func (p *Proxy) Handle(req *Request) error {
 	log := p.Logger.With(
-		zap.Uint64("reqID", p.counter.Next()),
+		zap.String("reqID", uuid.New().String()),
 		zap.String("action", req.Action),
 	).Sugar()
 
 	log.Infow("new request",
-		"from", req.Client.RemoteAddr,
-		"TxtFQDN", req.Payload.TxtFQDN,
-		"TxtValue", req.Payload.TxtValue,
+		"from", req.Remote.Addr,
+		"fqdn", req.Challenge.FQDN,
+		"key_auth_value", req.Challenge.EncodedKeyAuth,
 	)
 
 	if err := validateRequest(req); err != nil {
 		return fmt.Errorf("invalid request: %w", err)
 	}
 
-	cleanFqdn := strings.TrimPrefix(req.Payload.TxtFQDN, "_acme-challenge.")
-	rule := p.AccessRules.Search(cleanFqdn)
+	rule := p.AccessRules.Search(req.Challenge.FQDN)
 	if rule == nil {
-		err := fmt.Errorf(`no access rule for "%s" found`, cleanFqdn)
+		err := fmt.Errorf(`no access rule for "%s" found`, req.Challenge.FQDN)
 		log.Debug(err)
 		return err
 	}
 
-	log.Debugw("access rule found",
-		"matchedPattern", rule.Pattern,
+	log.Debugw("access rule matched",
+		"pattern", rule.Pattern,
 	)
 
-	if !rule.CheckAuth(req.Token) {
+	if !rule.CheckAuth(req.AuthToken) {
 		log.Debug("access denied")
 		return fmt.Errorf("access denied")
 	}
@@ -68,42 +61,41 @@ func (p *Proxy) Handle(req *Request) error {
 
 func validateRequest(req *Request) error {
 	if req.Action != "present" && req.Action != "cleanup" {
-		return errors.New("invalid action")
+		return errors.New("invalid request: unknown action")
 	}
 
-	if len(req.Payload.TxtFQDN) == 0 {
-		return errors.New("TXT record: FQDN not set")
+	if len(req.Challenge.FQDN) == 0 {
+		return errors.New("invalid request: fqdn not set")
 	}
 
-	if len(req.Payload.TxtValue) == 0 {
-		return errors.New("TXT record: value not set")
+	if len(req.Challenge.EncodedKeyAuth) == 0 {
+		return errors.New("invalid request: key auth value not set")
 	}
 
 	return nil
 }
 
-func callProvider(provider Provider, req *Request, log *zap.SugaredLogger) error {
-	domain := dns01.ToFqdn(strings.TrimPrefix(req.Payload.TxtFQDN, "_acme-challenge."))
-	token := req.Payload.TxtValue
-	fqdn := req.Payload.TxtFQDN
-	value := req.Payload.TxtValue
-
-	log.Debugw("Call DNS API",
-		"domain", domain,
-		"token", token,
-		"fqdn", fqdn,
-		"value", value,
-	)
-
-	var err error
+func callProvider(provider dns.Provider, req *Request, log *zap.SugaredLogger) error {
 	if req.Action == "present" {
-		err = provider.Present(domain, token, fqdn, value)
-	} else {
-		err = provider.CleanUp(domain, token, fqdn, value)
+		return callPresent(provider, req, log)
 	}
 
+	return callCleanup(provider, req, log)
+}
+
+func callPresent(provider dns.Provider, req *Request, log *zap.SugaredLogger) error {
+	err := provider.Present(req.Challenge)
 	if err != nil {
-		return fmt.Errorf(`DNS api call failed: %w`, err)
+		return fmt.Errorf(`add record failed: %w`, err)
+	}
+
+	return nil
+}
+
+func callCleanup(provider dns.Provider, req *Request, log *zap.SugaredLogger) error {
+	err := provider.CleanUp(req.Challenge)
+	if err != nil {
+		return fmt.Errorf(`delete record failed: %w`, err)
 	}
 
 	return nil

@@ -28,7 +28,7 @@ var _ = Describe("AccessRules", func() {
 			It("should return nil", func() {
 				Expect(rules).To(BeNil())
 			})
-			It("sould faild", func() {
+			It("sould fail", func() {
 				Expect(err).To(MatchError(ContainSubstring("no access rules defined")))
 			})
 		})
@@ -43,7 +43,7 @@ var _ = Describe("AccessRules", func() {
 			It("should return nil", func() {
 				Expect(rules).To(BeNil())
 			})
-			It("sould faild", func() {
+			It("sould fail", func() {
 				Expect(err).To(MatchError(ContainSubstring("'token' not specified")))
 			})
 		})
