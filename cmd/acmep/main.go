@@ -76,16 +76,19 @@ func install(log *logrus.Logger, noExec bool) error {
 		cmd.Stderr = os.Stderr
 		return cmd.Run()
 	}
+	log.Info("installing systemd service acemp: /etc/systemd/system/acmep.service")
 	err = ioutil.WriteFile("/etc/systemd/system/acmep.service", []byte(serviceFile), 0777)
 	if err != nil {
 		return errors.Annotate(err, "creating systemd service")
 	}
+	log.Info("ensuring config directory: /etc/acmep.d/")
 	err = os.MkdirAll("/etc/acmep.d/", 0755)
 	if err != nil {
 		return errors.Annotate(err, "creating acmep.d folder")
 	}
 	_, err = os.Stat(defaultConfigFile)
 	if errors.Is(err, os.ErrNotExist) {
+		log.Info("default config missing")
 		answers := struct {
 			Host            string `survey:"host"`
 			CloudflareToken string `survey:"cloudflare_token"`
@@ -110,6 +113,7 @@ provider "cloudflare" {
 	} else if err != nil {
 		return errors.Trace(err)
 	}
+	log.Info("validating config: %s", defaultConfigFile)
 	cfg, err := config.ParseFile(defaultConfigFile)
 	if err != nil {
 		return errors.Annotatef(err, "failed to parse config: %s", defaultConfigFile)
@@ -129,6 +133,16 @@ provider "cloudflare" {
 			return errors.Annotatef(err, "certmagic listen for host %s", cfg.Server.CertMagic.Host)
 		}
 	}
+	bin, err := ioutil.ReadFile(self)
+	if err != nil {
+		return errors.Trace(err)
+	}
+	log.Info("installing: /usr/local/bin/acmep")
+	err = ioutil.WriteFile("/usr/local/bin/acmep", bin, 0775)
+	if err != nil {
+		return errors.Annotate(err, "writing acmep bin to /usr/local/bin/acmep")
+	}
+	log.Info("installed")
 	return nil
 }
 
