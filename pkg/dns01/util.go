@@ -1,13 +1,13 @@
 package dns01
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/juju/errors"
 	"github.com/miekg/dns"
 )
 
@@ -25,14 +25,14 @@ func FindZoneByFQDN(fqdn string, nameservers []string) (string, error) {
 	if !strings.HasSuffix(fqdn, ".") {
 		fqdn += "."
 	}
-	soa, err := lookupSoaByFqdn(fqdn, nameservers)
+	soa, err := lookupSOAByFQDN(fqdn, nameservers)
 	if err != nil {
 		return "", err
 	}
 	return soa.zone, nil
 }
 
-func lookupSoaByFqdn(fqdn string, nameservers []string) (*soaCacheEntry, error) {
+func lookupSOAByFQDN(fqdn string, nameservers []string) (*soaCacheEntry, error) {
 	if !strings.HasSuffix(fqdn, ".") {
 		fqdn += "."
 	}
@@ -45,7 +45,7 @@ func lookupSoaByFqdn(fqdn string, nameservers []string) (*soaCacheEntry, error) 
 		return ent, nil
 	}
 
-	ent, err := fetchSoaByFqdn(fqdn, nameservers)
+	ent, err := fetchSOAByFQDN(fqdn, nameservers)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func lookupSoaByFqdn(fqdn string, nameservers []string) (*soaCacheEntry, error) 
 	return ent, nil
 }
 
-func fetchSoaByFqdn(fqdn string, nameservers []string) (*soaCacheEntry, error) {
+func fetchSOAByFQDN(fqdn string, nameservers []string) (*soaCacheEntry, error) {
 	var err error
 	var in *dns.Msg
 
@@ -94,7 +94,7 @@ func fetchSoaByFqdn(fqdn string, nameservers []string) (*soaCacheEntry, error) {
 
 			for _, ans := range in.Answer {
 				if soa, ok := ans.(*dns.SOA); ok {
-					return newSoaCacheEntry(soa), nil
+					return newSOACacheEntry(soa), nil
 				}
 			}
 		case dns.RcodeNameError:
@@ -176,7 +176,7 @@ type soaCacheEntry struct {
 	expires   time.Time // time when this cache entry should be evicted
 }
 
-func newSoaCacheEntry(soa *dns.SOA) *soaCacheEntry {
+func newSOACacheEntry(soa *dns.SOA) *soaCacheEntry {
 	return &soaCacheEntry{
 		zone:      soa.Hdr.Name,
 		primaryNs: soa.Ns,
@@ -233,18 +233,6 @@ func lookupNameservers(fqdn string, resolvers []string) ([]string, error) {
 		return authoritativeNss, nil
 	}
 	return nil, errors.New("could not determine authoritative nameservers")
-}
-
-// Update FQDN with CNAME if any
-func updateDomainWithCName(r *dns.Msg, fqdn string) string {
-	for _, rr := range r.Answer {
-		if cn, ok := rr.(*dns.CNAME); ok {
-			if cn.Hdr.Name == fqdn {
-				return cn.Target
-			}
-		}
-	}
-	return fqdn
 }
 
 // RecursiveNameservers are used to pre-check DNS propagation. It

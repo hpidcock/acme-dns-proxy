@@ -6,27 +6,26 @@ import (
 	"github.com/gobwas/glob"
 )
 
-// Pattern is a glob-like string for AccessRule
+// Pattern is a glob-like string for ACL
 type Pattern struct {
 	source string
 	glob   glob.Glob
 }
 
 // CompilePattern creates a Pattern form a given string
-func CompilePattern(source string) (*Pattern, error) {
+func CompilePattern(source string) (Pattern, error) {
 	g, err := glob.Compile(source)
 	if err != nil {
-		return nil, fmt.Errorf(`invalid pattern: "%s", error: %w`, source, err)
+		return Pattern{}, fmt.Errorf("invalid pattern: %q, error: %w", source, err)
 	}
-
-	return &Pattern{
+	return Pattern{
 		source: source,
 		glob:   g,
 	}, nil
 }
 
 // MustCompilePattern creates a Pattern form a given string. Panics in case of an error
-func MustCompilePattern(source string) *Pattern {
+func MustCompilePattern(source string) Pattern {
 	pattern, err := CompilePattern(source)
 	if err != nil {
 		panic(err)

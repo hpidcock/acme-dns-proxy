@@ -19,10 +19,10 @@ func EncodeKeyAuthorization(keyAuth string) string {
 
 // FQDNFromTXTRecordName returns the FQDN for a TXT record name
 func FQDNFromTXTRecordName(name string) string {
-	return ToFqdn(strings.TrimPrefix(name, "_acme-challenge."))
+	return ToFQDN(strings.TrimPrefix(name, "_acme-challenge."))
 }
 
-// RemoveZoneFromFqdn removes the zone from an FQDN and return the sub domain
-func RemoveZoneFromFqdn(fqdn, zone string) string {
+// RemoveZoneFromFQDN removes the zone from an FQDN and return the sub domain
+func RemoveZoneFromFQDN(fqdn, zone string) string {
 	return strings.TrimSuffix(fqdn, zone)
 }

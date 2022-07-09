@@ -1,6 +1,8 @@
 package proxy
 
-import "github.com/matthiasng/acme-dns-proxy/dns"
+import (
+	"github.com/hpidcock/acme-dns-proxy/pkg/dns"
+)
 
 // Request holds information about the request.
 type Request struct {
@@ -12,6 +14,6 @@ type Request struct {
 
 // Remote holds information about the remote client.
 type Remote struct {
-	Addr string // Addr is the address of the client
-	Name string // Name is the name of the client. This depends on the client and can be for example go/lego for lego
+	Address string // Address is the address of the client
+	Name    string // Name is the name of the client. This depends on the client and can be for example go/lego for lego
 }

@@ -82,7 +82,7 @@ func TestLookupNameserversErr(t *testing.T) {
 	}
 }
 
-var findXByFqdnTestCases = []struct {
+var findXByFQDNTestCases = []struct {
 	desc          string
 	fqdn          string
 	zone          string
@@ -148,10 +148,10 @@ var findXByFqdnTestCases = []struct {
 	},
 }
 
-func TestFindZoneByFqdn(t *testing.T) {
-	for i, test := range findXByFqdnTestCases {
+func TestFindZoneByFQDN(t *testing.T) {
+	for i, test := range findXByFQDNTestCases {
 		t.Run(test.desc, func(t *testing.T) {
-			clearFqdnCache()
+			clearFQDNCache()
 
 			zone, err := FindZoneByFQDN(test.fqdn, test.nameservers)
 			if test.expectedError != "" {
@@ -222,7 +222,7 @@ func TestRecursiveNameserversAddsPort(t *testing.T) {
 	}
 }
 
-func clearFqdnCache() {
+func clearFQDNCache() {
 	fqdnSOACacheMu.Lock()
 	fqdnSOACache = make(map[string]*soaCacheEntry)
 	fqdnSOACacheMu.Unlock()
