@@ -11,14 +11,15 @@ With `ACME DNS Proxy` you can control which client has access to which domains w
 ## Install
 
 ```
-GOBIN=/usr/local/bin go install github.com/hpidcock/acme-dns-proxy/cmd/acmep
-sudo /usr/local/bin/acmep --install
+go install github.com/hpidcock/acme-dns-proxy/cmd/acmep@latest
+acmep --install
 ```
 
 ## Example configuration
 
 ```hcl
 server {
+  listen_address = ":https"
   certmagic "acme.domain.example" {
   }
 }
