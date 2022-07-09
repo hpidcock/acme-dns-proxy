@@ -8,6 +8,13 @@ This creates a security issue if you use multipe host with `acme.sh` or `lego`, 
 
 With `ACME DNS Proxy` you can control which client has access to which domains without storing your DNS Provider API keys on the client.
 
+## Install
+
+```
+GOBIN=/usr/local/bin go install github.com/hpidcock/acme-dns-proxy/cmd/acmep
+sudo /usr/local/bin/acmep --install
+```
+
 ## Example configuration
 
 ```hcl

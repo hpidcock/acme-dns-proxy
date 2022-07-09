@@ -11,7 +11,8 @@ import (
 )
 
 // Serve accepts connections and handles requests.
-func Serve(ctx context.Context, log *logrus.Logger, defaultServer http.Server, p proxy.Proxy) {
+func Serve(ctx context.Context, log *logrus.Logger, defaultServer http.Server, p proxy.Proxy, done chan any) {
+	defer close(done)
 	var err error
 	server := &defaultServer
 	server.Handler = newHTTPHandler(p)
