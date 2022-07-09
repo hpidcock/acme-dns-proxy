@@ -16,18 +16,21 @@ import (
 func newHTTPHandler(p proxy.Proxy) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
+			p.Log.Errorf("method not allowed: %s %s", r.Method, r.URL.String())
 			methodNotAllowed(w)
 			return
 		}
 
 		action := strings.ToLower(strings.Trim(r.URL.Path, "/"))
 		if action != "present" && action != "cleanup" {
+			p.Log.Errorf("not found: %s %s", r.Method, r.URL.String())
 			notFound(w)
 			return
 		}
 
 		req, err := parseHTTPRequest(r)
 		if err != nil {
+			p.Log.Errorf("bad request: %s %s %s", r.Method, r.URL.String(), err.Error())
 			badRequest(w, err)
 			return
 		}
@@ -38,6 +41,7 @@ func newHTTPHandler(p proxy.Proxy) http.HandlerFunc {
 		if err != nil {
 			// We dont want to expose information to unauthorized clients.
 			// So we dont care about the reason and always respond with unauthorized.
+			p.Log.Errorf("unauthorized: %s %s %s", r.Method, r.URL.String(), err.Error())
 			unauthorized(w)
 			return
 		}
@@ -47,8 +51,8 @@ func newHTTPHandler(p proxy.Proxy) http.HandlerFunc {
 			FQDN  string
 			Value string
 		}{req.Challenge.FQDN, req.Challenge.FQDN})
-
 		if err != nil {
+			p.Log.Errorf("internal server error: %s %s %s", r.Method, r.URL.String(), err.Error())
 			internalServerError(w, err)
 			return
 		}
