@@ -215,7 +215,7 @@ Environment=HOME=/root
 KillMode=process
 Restart=on-failure
 RestartPreventExitStatus=255
-Type=notify
+Type=simple
 
 [Install]
 WantedBy=multi-user.target
