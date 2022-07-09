@@ -5,14 +5,14 @@ import (
 )
 
 type Config struct {
-	Server   Server   `hcl:"server"`
-	Provider Provider `hcl:"provider"`
+	Server   Server   `hcl:"server,block"`
+	Provider Provider `hcl:"provider,block"`
 	ACLs     []ACL    `hcl:"acl,block"`
 }
 
 type Server struct {
-	ListenAddress string     `hcl:"listen_addr"`
-	CertMagic     *CertMagic `hcl:"certmagic"`
+	ListenAddress string     `hcl:"listen_addr,optional"`
+	CertMagic     *CertMagic `hcl:"certmagic,block"`
 }
 
 type CertMagic struct {
