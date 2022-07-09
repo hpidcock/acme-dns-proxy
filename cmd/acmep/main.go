@@ -113,7 +113,7 @@ provider "cloudflare" {
 	} else if err != nil {
 		return errors.Trace(err)
 	}
-	log.Info("validating config: %s", defaultConfigFile)
+	log.Infof("validating config: %s", defaultConfigFile)
 	cfg, err := config.ParseFile(defaultConfigFile)
 	if err != nil {
 		return errors.Annotatef(err, "failed to parse config: %s", defaultConfigFile)
@@ -137,10 +137,12 @@ provider "cloudflare" {
 	if err != nil {
 		return errors.Trace(err)
 	}
-	log.Info("installing: /usr/local/bin/acmep")
-	err = ioutil.WriteFile("/usr/local/bin/acmep", bin, 0775)
-	if err != nil {
-		return errors.Annotate(err, "writing acmep bin to /usr/local/bin/acmep")
+	if self != "/usr/local/bin/acmep" {
+		log.Info("installing: /usr/local/bin/acmep")
+		err = ioutil.WriteFile("/usr/local/bin/acmep", bin, 0775)
+		if err != nil {
+			return errors.Annotate(err, "writing acmep bin to /usr/local/bin/acmep")
+		}
 	}
 	log.Info("installed")
 	return nil
@@ -209,6 +211,7 @@ After=network.target auditd.service
 [Service]
 ExecStart=/usr/local/bin/acmep
 ExecReload=/bin/kill -HUP $MAINPID
+Environment=HOME=/root
 KillMode=process
 Restart=on-failure
 RestartPreventExitStatus=255
