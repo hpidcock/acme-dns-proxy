@@ -11,7 +11,7 @@ type Config struct {
 }
 
 type Server struct {
-	ListenAddress string     `hcl:"listen_addr,optional"`
+	ListenAddress string     `hcl:"listen_addr"`
 	CertMagic     *CertMagic `hcl:"certmagic,block"`
 }
 

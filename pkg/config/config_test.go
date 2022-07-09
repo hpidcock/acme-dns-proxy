@@ -11,6 +11,7 @@ import (
 func TestParseConfig(t *testing.T) {
 	_, err := config.Parse(`
 server {
+	listen_addr = ":https"
 	certmagic "acme.domain.example" {
 	}
 }

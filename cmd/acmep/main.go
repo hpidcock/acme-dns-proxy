@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"flag"
-	"net"
+	"net/http"
 	"os"
 	"os/signal"
 
@@ -55,23 +55,24 @@ func cmd(log *logrus.Logger, configFile string) error {
 		ACLs:     acls,
 	}
 
-	var l net.Listener
+	server := http.Server{
+		Addr: cfg.Server.ListenAddress,
+	}
 	if cfg.Server.CertMagic != nil {
 		certmagic.DefaultACME.DNS01Solver = &certmagic.DNS01Solver{
 			DNSProvider: provider.Underlying(),
 		}
-		l, err = certmagic.Listen([]string{cfg.Server.CertMagic.Host})
+		certmagic.DefaultACME.Agreed = true
+		cmCfg := certmagic.NewDefault()
+		err := cmCfg.ManageSync(ctx, []string{cfg.Server.CertMagic.Host})
 		if err != nil {
 			return errors.Annotatef(err, "certmagic listen for host %s", cfg.Server.CertMagic.Host)
 		}
-	} else {
-		l, err = net.Listen("tcp", cfg.Server.ListenAddress)
-		if err != nil {
-			return errors.Annotatef(err, "net listen on %s", cfg.Server.ListenAddress)
-		}
+		server.TLSConfig = cmCfg.TLSConfig()
+		server.TLSConfig.NextProtos = append([]string{"h2", "http/1.1"}, server.TLSConfig.NextProtos...)
 	}
 
-	go listener.Serve(ctx, log, l, proxy)
+	go listener.Serve(ctx, log, server, proxy)
 
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)
