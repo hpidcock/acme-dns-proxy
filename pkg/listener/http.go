@@ -15,10 +15,20 @@ import (
 
 func newHTTPHandler(p proxy.Proxy) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
+		switch r.Method {
+		default:
 			p.Log.Errorf("method not allowed: %s %s", r.Method, r.URL.String())
 			methodNotAllowed(w)
 			return
+		case "GET":
+			if r.URL.Path == "/" {
+				ok(w)
+				return
+			}
+			p.Log.Errorf("not found: %s %s", r.Method, r.URL.String())
+			notFound(w)
+			return
+		case "POST":
 		}
 
 		action := strings.ToLower(strings.Trim(r.URL.Path, "/"))

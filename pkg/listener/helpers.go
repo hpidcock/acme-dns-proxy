@@ -1,6 +1,7 @@
 package listener
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -22,4 +23,10 @@ func unauthorized(w http.ResponseWriter) {
 
 func internalServerError(w http.ResponseWriter, err error) {
 	http.Error(w, err.Error(), http.StatusInternalServerError)
+}
+
+func ok(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "OK")
 }
